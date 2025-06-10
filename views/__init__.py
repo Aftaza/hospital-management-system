@@ -1,0 +1,4 @@
+import doctor_view
+import patient_view
+import shared_view
+import staff_view
