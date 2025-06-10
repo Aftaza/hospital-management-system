@@ -5,9 +5,9 @@ from models.appointment import Appointment
 from models.prescription import Prescription
 
 # Impor controller spesifik
-from .patient_controller import PatientController
-from .doctor_controller import DoctorController
-from .staff_controller import StaffController
+from controllers.patient_controller import PatientController
+from controllers.doctor_controller import DoctorController
+from controllers.staff_controller import StaffController
 
 class AppController:
     def __init__(self):
@@ -18,25 +18,30 @@ class AppController:
     def _load_data(self):
         # Logika untuk memuat semua CSV ke dalam list of objects
         # Menggunakan _ di awal nama fungsi menandakan ini untuk penggunaan internal kelas
-        users_df = pd.read_csv('data/users.csv')
-        self.users = []
-        for _, row in users_df.iterrows():
-            if row['role'] == 'pasien':
-                self.users.append(Patient(row['id'], row['username'], row['password']))
-            elif row['role'] == 'dokter':
-                self.users.append(Doctor(row['id'], row['username'], row['password'], row['specialty'], row['schedule']))
-            elif row['role'] == 'staff':
-                self.users.append(Staff(row['id'], row['username'], row['password']))
-        
-        meds_df = pd.read_csv('data/medicines.csv')
-        self.medicines = [Medicine(row['id'], row['name'], row['stock']) for _, row in meds_df.iterrows()]
-        
-        # Data transaksional, bisa di-load dari CSV jika sudah ada
-        self.appointments = [] 
-        self.prescriptions = []
+        try:
+            users_df = pd.read_csv('data/users.csv')
+            self.users = []
+            for _, row in users_df.iterrows():
+                if row['role'] == 'pasien':
+                    self.users.append(Patient(row['id'], row['username'], row['password']))
+                elif row['role'] == 'dokter':
+                    self.users.append(Doctor(row['id'], row['username'], row['password'], row['specialty'], row['schedule']))
+                elif row['role'] == 'staff':
+                    self.users.append(Staff(row['id'], row['username'], row['password']))
+            
+            meds_df = pd.read_csv('data/medicines.csv')
+            self.medicines = [Medicine(row['id'], row['name'], row['stock']) for _, row in meds_df.iterrows()]
+            
+            # Data transaksional, bisa di-load dari CSV jika sudah ada
+            self.appointments = [] 
+            self.prescriptions = []
+        except FileNotFoundError as e:
+            print(f"[ERROR] File tidak ditemukan: {e}. Pastikan file CSV ada di dalam folder 'data/'.")
+            exit()
+
 
     def _login(self):
-        print("--- Selamat Datang di Sistem Rumah Sakit ---")
+        print("\n--- Selamat Datang di Sistem Rumah Sakit ---")
         username = input("Username: ")
         password = input("Password: ")
         
@@ -58,10 +63,12 @@ class AppController:
             controller = PatientController(self.current_user, self.users, self.appointments, self.prescriptions)
             controller.run()
         elif self.current_user.role == 'dokter':
-            controller = DoctorController(self.current_user, self.appointments, self.prescriptions, self.medicines)
+            # FIX: Menambahkan argumen 'self.users' yang sebelumnya hilang
+            controller = DoctorController(self.current_user, self.appointments, self.prescriptions, self.medicines, self.users)
             controller.run()
         elif self.current_user.role == 'staff':
-            controller = StaffController(self.current_user, self.prescriptions, self.medicines)
+            # FIX: Menambahkan argumen 'self.users' yang sebelumnya hilang
+            controller = StaffController(self.current_user, self.prescriptions, self.medicines, self.users)
             controller.run()
             
         print("\nAnda telah keluar dari sistem.")

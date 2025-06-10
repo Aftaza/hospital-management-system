@@ -13,7 +13,7 @@ class PatientController:
 
     def run(self):
         while True:
-            choice = pv.display_patient_menu()
+            choice = pv.display_patient_menu(self.current_user.username)
             if choice == '1':
                 self.view_doctor_schedules()
             elif choice == '2':
