@@ -55,7 +55,7 @@ class StaffController:
             shared_view.display_error("Resep tidak ditemukan.")
             return
         
-        if prescription.status != 'submitted':
+        if prescription.status != 'new':
             shared_view.display_error(f"Resep ini tidak bisa diproses (Status saat ini: {prescription.status.upper()}).")
             return
             

@@ -14,8 +14,8 @@ def display_prescription_requests(prescriptions, patients_map, medicines_map):
     shared_view.clear_screen()
     shared_view.display_header("Permintaan Resep Pasien")
     
-    # Filter hanya resep yang diajukan (status 'submitted')
-    pending_prescriptions = [p for p in prescriptions if p.status == 'submitted']
+    # Filter hanya resep yang diajukan (status 'new')
+    pending_prescriptions = [p for p in prescriptions if p.status == 'new']
 
     if not pending_prescriptions:
         print("Tidak ada permintaan resep baru.")
