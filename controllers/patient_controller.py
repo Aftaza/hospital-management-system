@@ -72,4 +72,4 @@ class PatientController:
             doctor = next((doc for doc in self.doctors if doc.id == my_app.doctor_id), None)
             pv.display_queue_info(my_app, doctor)
         else:
-            print("Anda tidak memiliki antrean aktif.")
+            shared_view.display_error("Anda tidak memiliki antrean aktif.")

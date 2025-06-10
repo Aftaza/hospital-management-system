@@ -4,22 +4,11 @@ from models.prescription import Prescription
 
 class DoctorController:
     def __init__(self, user, appointments, prescriptions, medicines, all_users, data_manager):
-        """
-        Inisialisasi DoctorController.
-        
-        Args:
-            user (Doctor): Objek dokter yang sedang login.
-            appointments (list): Daftar semua objek appointment.
-            prescriptions (list): Daftar semua objek resep.
-            medicines (list): Daftar semua objek obat.
-            all_users (list): Daftar semua objek pengguna untuk mencari nama.
-        """
         self.current_user = user
         self.appointments = appointments
         self.prescriptions = prescriptions
         self.medicines = medicines
         self.data_manager = data_manager
-        # Membuat 'map' untuk pencarian nama pasien yang efisien
         self.patients_map = {u.id: u.username for u in all_users if u.role == 'pasien'}
 
     def run(self):
@@ -37,57 +26,53 @@ class DoctorController:
 
     def _view_patient_queue(self):
         """Menampilkan daftar pasien yang mengantre untuk dokter ini."""
-        # Filter appointment hanya untuk dokter yang sedang login dan yang belum selesai
         doctor_appointments = [
             app for app in self.appointments 
-            if app.doctor_id == self.current_user.id and app.status != 'done'
+            if app.doctor_id == self.current_user.id
         ]
-        
         dv.display_patient_queue(doctor_appointments, self.patients_map)
 
     def _create_prescription(self):
-        """Memandu dokter melalui proses pembuatan resep."""
-        # Meminta input dari dokter melalui view
-        patient_id_str, selected_medicines = dv.prompt_create_prescription(self.medicines)
+        """
+        REVISI: Alur kerja baru untuk membuat resep.
+        1. Dokter memilih pasien dari antrean.
+        2. Dokter memasukkan detail obat untuk pasien tersebut.
+        """
+        # Langkah 1: Dapatkan daftar antrean khusus untuk dokter ini
+        doctor_appointments = [
+            app for app in self.appointments 
+            if app.doctor_id == self.current_user.id
+        ]
         
-        # Validasi input
-        if not patient_id_str:
-            shared_view.display_error("ID Pasien tidak boleh kosong.")
-            return
-            
-        try:
-            patient_id = int(patient_id_str)
-        except ValueError:
-            shared_view.display_error("ID Pasien harus berupa angka.")
+        # Langkah 2: Minta dokter memilih pasien dari antrean via view
+        selected_appointment = dv.prompt_select_patient(doctor_appointments, self.patients_map)
+        
+        # Jika dokter tidak memilih atau tidak ada pasien, hentikan proses
+        if not selected_appointment:
             return
 
-        if patient_id not in self.patients_map:
-            shared_view.display_error("Pasien dengan ID tersebut tidak ditemukan.")
-            return
+        # Langkah 3: Minta dokter memasukkan detail obat via view
+        selected_medicines = dv.prompt_for_medicines(self.medicines)
 
         if not selected_medicines:
-            shared_view.display_error("Resep harus berisi setidaknya satu obat.")
+            shared_view.display_error("Pembuatan resep dibatalkan karena tidak ada obat yang dipilih.")
             return
 
-        # Proses pembuatan resep
-        # 1. Buat objek resep baru
-        new_prescription_id = len(self.prescriptions) + 1
+        # Langkah 4: Buat resep dan perbarui data
+        new_prescription_id = (max([p.id for p in self.prescriptions], default=0) + 1)
         new_prescription = Prescription(
             pres_id=new_prescription_id,
-            patient_id=patient_id,
+            patient_id=selected_appointment.patient_id,
             doctor_id=self.current_user.id,
             medicines=selected_medicines,
-            status='new' # Status awal: 'new', akan diubah pasien menjadi 'submitted'
+            status='new'
         )
         self.prescriptions.append(new_prescription)
+        self.data_manager.save_prescriptions(self.prescriptions)
 
-        # 2. Tandai appointment pasien tersebut sebagai 'done'
-        appointment_to_update = next((
-            app for app in self.appointments 
-            if app.patient_id == patient_id and app.doctor_id == self.current_user.id and app.status == 'waiting'
-        ), None)
+        # Langkah 5: Ubah status appointment menjadi 'done' dan simpan
+        selected_appointment.status = 'done'
+        self.data_manager.save_appointments(self.appointments)
         
-        if appointment_to_update:
-            appointment_to_update.status = 'done'
-        
-        shared_view.display_success(f"Resep untuk pasien {self.patients_map[patient_id]} berhasil dibuat.")
+        patient_name = self.patients_map.get(selected_appointment.patient_id, "pasien")
+        shared_view.display_success(f"Resep untuk {patient_name} (Antrean No. {selected_appointment.queue_number}) berhasil dibuat.")
