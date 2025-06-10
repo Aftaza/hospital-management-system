@@ -75,7 +75,7 @@ class AppController:
 
         # Pass the data_manager instance to the specific controllers
         if self.current_user.role == 'pasien':
-            controller = PatientController(self.current_user, self.users, self.appointments, self.prescriptions, self.data_manager)
+            controller = PatientController(self.current_user, self.users, self.appointments, self.prescriptions, self.medicines, self.data_manager)
             controller.run()
         elif self.current_user.role == 'dokter':
             controller = DoctorController(self.current_user, self.appointments, self.prescriptions, self.medicines, self.users, self.data_manager)

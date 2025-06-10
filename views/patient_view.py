@@ -43,17 +43,42 @@ def display_no_active_queue():
     print("\nAnda tidak memiliki antrean yang sedang aktif.")
     shared_view.pause()
 
-def display_my_prescriptions(prescriptions, doctors, medicines_map):
-    """Menampilkan daftar resep milik pasien."""
+def display_my_prescriptions(prescriptions, doctors_map, medicines_map):
+    """Menampilkan daftar resep milik pasien dengan detail lengkap."""
     shared_view.clear_screen()
     shared_view.display_header("Riwayat Resep Anda")
     if not prescriptions:
         print("Anda belum memiliki resep.")
     else:
-        for pres in prescriptions:
-            doctor_name = doctors.get(pres.doctor_id, "Dokter Tidak Dikenal")
-            print(f"\n--- Resep ID: {pres.id} | Dokter: {doctor_name} | Status: {pres.status.upper()} ---")
+        # Urutkan dari yang terbaru
+        sorted_prescriptions = sorted(prescriptions, key=lambda p: p.id, reverse=True)
+        for pres in sorted_prescriptions:
+            doctor_name = doctors_map.get(pres.doctor_id, "Dokter Tidak Dikenal")
+            print("-" * 50)
+            print(f"Resep ID: {pres.id} | Dokter: {doctor_name}")
+            print(f"Status  : {pres.status.upper()}")
+            print("Detail Obat:")
             for med_id, qty in pres.medicines.items():
                 med_name = medicines_map.get(med_id, "Obat Tidak Dikenal")
-                print(f"  - {med_name}: {qty} buah")
-    shared_view.pause()
+                print(f"  - {med_name:<25} : {qty} buah")
+            print("-" * 50)
+
+def prompt_submit_prescription(new_prescriptions):
+    """
+    Menampilkan resep baru dan meminta pasien memilih mana yang akan diajukan.
+    """
+    print("\nAnda memiliki resep baru yang belum diajukan:")
+    if not new_prescriptions:
+        print("Tidak ada resep baru yang bisa diajukan saat ini.")
+        shared_view.pause()
+        return None
+    
+    print(f"{'ID Resep':<15} {'Dokter':<20}")
+    print("-" * 35)
+    # Tampilkan resep yang bisa diajukan (status 'new')
+    for pres in new_prescriptions:
+        # Note: Untuk view ini kita tidak perlu nama dokter, hanya ID
+        print(f"{pres.id:<15}")
+
+    choice = input("\nMasukkan ID Resep yang ingin diajukan ke apotek (atau biarkan kosong untuk kembali): ")
+    return choice
