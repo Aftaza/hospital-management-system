@@ -3,7 +3,7 @@ import views.shared_view as shared_view
 from models.prescription import Prescription
 
 class DoctorController:
-    def __init__(self, user, appointments, prescriptions, medicines, all_users):
+    def __init__(self, user, appointments, prescriptions, medicines, all_users, data_manager):
         """
         Inisialisasi DoctorController.
         
@@ -18,6 +18,7 @@ class DoctorController:
         self.appointments = appointments
         self.prescriptions = prescriptions
         self.medicines = medicines
+        self.data_manager = data_manager
         # Membuat 'map' untuk pencarian nama pasien yang efisien
         self.patients_map = {u.id: u.username for u in all_users if u.role == 'pasien'}
 

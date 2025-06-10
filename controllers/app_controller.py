@@ -4,22 +4,23 @@ from models.medicine import Medicine
 from models.appointment import Appointment
 from models.prescription import Prescription
 
-# Impor controller spesifik
+# Impor controller dan data manager
 from controllers.patient_controller import PatientController
 from controllers.doctor_controller import DoctorController
 from controllers.staff_controller import StaffController
+from utils.data_manager import DataManager
 
 class AppController:
     def __init__(self):
-        # Memuat semua data saat aplikasi dimulai
+        self.data_manager = DataManager()
         self._load_data()
         self.current_user = None
 
     def _load_data(self):
-        # Logika untuk memuat semua CSV ke dalam list of objects
-        # Menggunakan _ di awal nama fungsi menandakan ini untuk penggunaan internal kelas
+        """Loads data using DataManager and handles potential errors."""
         try:
-            users_df = pd.read_csv('data/users.csv')
+            # Load users
+            users_df = pd.read_csv(self.data_manager.users_path)
             self.users = []
             for _, row in users_df.iterrows():
                 if row['role'] == 'pasien':
@@ -28,18 +29,33 @@ class AppController:
                     self.users.append(Doctor(row['id'], row['username'], row['password'], row['specialty'], row['schedule']))
                 elif row['role'] == 'staff':
                     self.users.append(Staff(row['id'], row['username'], row['password']))
-            
-            meds_df = pd.read_csv('data/medicines.csv')
+
+            # Load medicines
+            meds_df = pd.read_csv(self.data_manager.medicines_path)
             self.medicines = [Medicine(row['id'], row['name'], row['stock']) for _, row in meds_df.iterrows()]
-            
-            # Data transaksional, bisa di-load dari CSV jika sudah ada
-            self.appointments = [] 
-            self.prescriptions = []
+
+            # Load appointments and prescriptions, handle if they don't exist yet
+            try:
+                app_df = pd.read_csv(self.data_manager.appointments_path)
+                self.appointments = [Appointment(row['id'], row['patient_id'], row['doctor_id'], row['queue_number'], row['status']) for _, row in app_df.iterrows()]
+            except FileNotFoundError:
+                self.appointments = []
+
+            try:
+                pres_df = pd.read_csv(self.data_manager.prescriptions_path)
+                # Helper function to parse medicine string "1:2;3:1" back to dict
+                def parse_medicines(med_str):
+                    if not isinstance(med_str, str): return {}
+                    parts = med_str.split(';')
+                    return {int(p.split(':')[0]): int(p.split(':')[1]) for p in parts if ':' in p}
+                self.prescriptions = [Prescription(row['id'], row['patient_id'], row['doctor_id'], parse_medicines(row['medicines']), row['status']) for _, row in pres_df.iterrows()]
+            except FileNotFoundError:
+                self.prescriptions = []
+
         except FileNotFoundError as e:
-            print(f"[ERROR] File tidak ditemukan: {e}. Pastikan file CSV ada di dalam folder 'data/'.")
+            print(f"[ERROR] Critical file not found: {e}. Please run generate_data.py")
             exit()
-
-
+            
     def _login(self):
         print("\n--- Selamat Datang di Sistem Rumah Sakit ---")
         username = input("Username: ")
@@ -57,18 +73,15 @@ class AppController:
         if not self._login():
             return
 
-        # Delegasi ke controller yang sesuai berdasarkan peran
+        # Pass the data_manager instance to the specific controllers
         if self.current_user.role == 'pasien':
-            # Membuat instance PatientController dan memberikan data yang diperlukan
-            controller = PatientController(self.current_user, self.users, self.appointments, self.prescriptions)
+            controller = PatientController(self.current_user, self.users, self.appointments, self.prescriptions, self.data_manager)
             controller.run()
         elif self.current_user.role == 'dokter':
-            # FIX: Menambahkan argumen 'self.users' yang sebelumnya hilang
-            controller = DoctorController(self.current_user, self.appointments, self.prescriptions, self.medicines, self.users)
+            controller = DoctorController(self.current_user, self.appointments, self.prescriptions, self.medicines, self.users, self.data_manager)
             controller.run()
         elif self.current_user.role == 'staff':
-            # FIX: Menambahkan argumen 'self.users' yang sebelumnya hilang
-            controller = StaffController(self.current_user, self.prescriptions, self.medicines, self.users)
+            controller = StaffController(self.current_user, self.prescriptions, self.medicines, self.users, self.data_manager)
             controller.run()
             
         print("\nAnda telah keluar dari sistem.")

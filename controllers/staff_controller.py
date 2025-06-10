@@ -2,7 +2,7 @@ import views.staff_view as sv
 import views.shared_view as shared_view
 
 class StaffController:
-    def __init__(self, user, prescriptions, medicines, all_users):
+    def __init__(self, user, prescriptions, medicines, all_users, data_manager):
         """
         Inisialisasi StaffController.
 
@@ -15,6 +15,7 @@ class StaffController:
         self.current_user = user
         self.prescriptions = prescriptions
         self.medicines = medicines
+        self.data_manager = data_manager
         # Membuat 'map' untuk pencarian data yang efisien
         self.patients_map = {u.id: u.username for u in all_users if u.role == 'pasien'}
         self.medicines_map = {m.id: m.name for m in self.medicines}
@@ -72,10 +73,15 @@ class StaffController:
             for med_id, required_qty in prescription.medicines.items():
                 self.medicine_objects[med_id].stock -= required_qty
             prescription.status = 'fulfilled'
+            # *** SAVE UPDATED MEDICINE STOCK ***
+            self.data_manager.save_medicines(self.medicines)
             shared_view.display_success("Resep berhasil dipenuhi dan stok telah dikurangi.")
         else:
             prescription.status = 'pending'
             shared_view.display_success("Stok tidak cukup. Status resep diubah menjadi 'pending'.")
+        
+        # *** SAVE UPDATED PRESCRIPTION STATUS ***
+        self.data_manager.save_prescriptions(self.prescriptions)
 
     def _manage_stock(self):
         """Menampilkan sub-menu untuk melihat dan memperbarui stok obat."""
@@ -97,6 +103,8 @@ class StaffController:
                 medicine_to_update = self.medicine_objects.get(med_id)
                 if medicine_to_update:
                     medicine_to_update.stock = new_stock
+                     # *** SAVE UPDATED MEDICINE STOCK ***
+                    self.data_manager.save_medicines(self.medicines)
                     shared_view.display_success(f"Stok untuk {medicine_to_update.name} berhasil diubah menjadi {new_stock}.")
                 else:
                     shared_view.display_error("Obat dengan ID tersebut tidak ditemukan.")
